@@ -1,0 +1,98 @@
+{% extends 'clients/base.html' %}
+{% block title %}Importer des clients — KEHOU Property{% endblock %}
+{% block page_title %}Import CSV / Excel{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto;">
+    <div class="glass-card fade-up" style="margin-bottom:24px;">
+        <div class="section-title">Importer des clients</div>
+        <div style="padding:16px;background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.2);border-radius:10px;margin-bottom:24px;font-size:13px;color:var(--text-muted);line-height:1.8;">
+            📋 <strong style="color:var(--cream);">Format attendu :</strong> CSV ou Excel (.xlsx) avec les colonnes suivantes :<br>
+            <code style="color:var(--gold);font-size:12px;">nom, prenom, activite, anciennete_annees, nb_categories, freq_stock_par_an</code><br>
+            + colonnes optionnelles : <code style="color:var(--gold);font-size:12px;">flux_m1..flux_m12, versement_m1..versement_m12, telephone</code>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Fichier CSV ou Excel</label>
+                <div style="border:2px dashed rgba(224,181,79,0.3);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;" id="dropZone">
+                    <div style="font-size:40px;margin-bottom:12px;">📁</div>
+                    <div style="font-size:14px;color:var(--cream);margin-bottom:4px;">Glissez-déposez votre fichier ici</div>
+                    <div style="font-size:12px;color:var(--text-muted);">ou cliquez pour choisir</div>
+                    <input type="file" name="fichier" id="fileInput" accept=".csv,.xlsx,.xls"
+                           style="position:absolute;inset:0;opacity:0;cursor:pointer;" required
+                           onchange="showFilename(this)">
+                </div>
+                <div id="fileNameDisplay" style="margin-top:8px;font-size:13px;color:var(--gold);display:none;"></div>
+            </div>
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+                <a href="{% url 'client_list' %}" class="btn btn-outline">Annuler</a>
+                <button type="submit" class="btn btn-primary">📤 Importer</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Colonnes guide -->
+    <div class="glass-card fade-up fade-up-1">
+        <div class="section-title">Structure du fichier</div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Colonne</th>
+                        <th>Type</th>
+                        <th>Obligatoire</th>
+                        <th>Exemple</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>nom</td><td>Texte</td><td><span style="color:#4ade80;">✅</span></td><td>Koné</td></tr>
+                    <tr><td>prenom</td><td>Texte</td><td><span style="color:#4ade80;">✅</span></td><td>Amadou</td></tr>
+                    <tr><td>activite</td><td>Texte</td><td><span style="color:#4ade80;">✅</span></td><td>Commerce de textiles</td></tr>
+                    <tr><td>anciennete_annees</td><td>Entier</td><td><span style="color:#4ade80;">✅</span></td><td>7</td></tr>
+                    <tr><td>nb_categories</td><td>Entier</td><td><span style="color:#4ade80;">✅</span></td><td>3</td></tr>
+                    <tr><td>freq_stock_par_an</td><td>Entier</td><td><span style="color:#4ade80;">✅</span></td><td>12</td></tr>
+                    <tr><td>telephone</td><td>Texte</td><td><span style="color:var(--text-muted);">—</span></td><td>+225 07 00 00 00</td></tr>
+                    <tr><td>flux_m1 … flux_m12</td><td>Entier (FCFA)</td><td><span style="color:var(--text-muted);">—</span></td><td>2500000</td></tr>
+                    <tr><td>versement_m1 … versement_m12</td><td>Entier (FCFA)</td><td><span style="color:var(--text-muted);">—</span></td><td>563332</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showFilename(input) {
+    const display = document.getElementById('fileNameDisplay');
+    if (input.files && input.files[0]) {
+        display.textContent = '📄 ' + input.files[0].name;
+        display.style.display = 'block';
+        document.getElementById('dropZone').style.borderColor = 'var(--gold)';
+    }
+}
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.style.background = 'rgba(224,181,79,0.08)';
+});
+dropZone.addEventListener('dragleave', () => {
+    dropZone.style.background = '';
+});
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.background = '';
+    const file = e.dataTransfer.files[0];
+    if (file) {
+        const input = document.getElementById('fileInput');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        showFilename(input);
+    }
+});
+</script>
+{% endblock %}

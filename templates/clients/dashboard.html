@@ -1,0 +1,176 @@
+{% extends 'clients/base.html' %}
+{% block title %}Dashboard — KEHOU Property{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<!-- KPI Row -->
+<div class="kpi-grid fade-up" style="margin-bottom:28px;">
+    <div class="kpi-card">
+        <div class="kpi-label">Clients total</div>
+        <div class="kpi-value">{{ total_clients }}</div>
+        <div class="kpi-sub">Enregistrés</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Ce mois-ci</div>
+        <div class="kpi-value">{{ clients_ce_mois }}</div>
+        <div class="kpi-sub">Nouveaux clients</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Cette année</div>
+        <div class="kpi-value">{{ clients_cette_annee }}</div>
+        <div class="kpi-sub">Clients inscrits</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Taux d'acceptation</div>
+        <div class="kpi-value" style="color: {% if taux_acceptation >= 70 %}#4ade80{% elif taux_acceptation >= 50 %}#fbbf24{% else %}#f87171{% endif %};">{{ taux_acceptation }}%</div>
+        <div class="kpi-sub">Finançable + Très fiable + Premium</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">En retard</div>
+        <div class="kpi-value" style="color: #f87171;">{{ nb_retards }}</div>
+        <div class="kpi-sub">Ce mois-ci</div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid-2 fade-up fade-up-1" style="margin-bottom:28px;">
+    <div class="glass-card">
+        <div class="section-title">Versements par mois</div>
+        <canvas id="versementsChart" height="200"></canvas>
+    </div>
+    <div class="glass-card">
+        <div class="section-title">Répartition des profils KIS</div>
+        <canvas id="profilChart" height="200"></canvas>
+    </div>
+</div>
+
+<!-- Flux chart + Quick actions -->
+<div class="grid-2 fade-up fade-up-2" style="margin-bottom:28px;">
+    <div class="glass-card">
+        <div class="section-title">Flux entrants moyens (FCFA)</div>
+        <canvas id="fluxChart" height="200"></canvas>
+    </div>
+    <div class="glass-card">
+        <div class="section-title">Actions rapides</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <a href="{% url 'client_create' %}" class="btn btn-primary" style="justify-content:center;">➕ Nouveau client</a>
+            <a href="{% url 'import_clients' %}" class="btn btn-outline" style="justify-content:center;">📤 Importer CSV/Excel</a>
+            <a href="{% url 'rappels' %}" class="btn btn-outline" style="justify-content:center; color: #fbbf24; border-color: rgba(251,191,36,0.4);">⏰ Voir les retards ({{ nb_retards }})</a>
+            <a href="{% url 'enregistrement_mensualite' %}" class="btn btn-outline" style="justify-content:center;">💰 Enregistrer une mensualité</a>
+        </div>
+        <div style="margin-top:24px; padding:16px; background:rgba(224,181,79,0.06); border-radius:10px; border:1px solid rgba(224,181,79,0.15);">
+            <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px;">Scores analysés</div>
+            <div style="display:flex;justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                <span>Clients scorés</span>
+                <span style="color:var(--gold);">{{ total_scores }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                <span>Finançables</span>
+                <span style="color:#4ade80;">{{ acceptes }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between; font-size:13px;">
+                <span>Non finançables</span>
+                <span style="color:#f87171;">{{ total_scores|add:"-"|add:acceptes }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const moisLabels = {{ mois_labels|safe }};
+const versementsData = {{ versements_par_mois|safe }};
+const fluxData = {{ flux_moy_par_mois|safe }};
+const profilData = {{ profil_data|safe }};
+
+const GOLD = '#E0B54F';
+const NAVY = '#02133E';
+
+// Versements chart
+new Chart(document.getElementById('versementsChart'), {
+    type: 'line',
+    data: {
+        labels: moisLabels,
+        datasets: [{
+            label: 'Clients ayant versé',
+            data: versementsData,
+            borderColor: GOLD,
+            backgroundColor: 'rgba(224,181,79,0.1)',
+            borderWidth: 2,
+            pointBackgroundColor: GOLD,
+            pointRadius: 4,
+            fill: true,
+            tension: 0.4,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { color: 'rgba(224,181,79,0.06)' }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: 'rgba(224,181,79,0.06)' }, beginAtZero: true, ticks: { font: { size: 11 } } }
+        }
+    }
+});
+
+// Profil pie chart
+const profilColors = {
+    'Premium': '#FFD700', 'Tres fiable': '#4ade80', 'Financable': '#60a5fa',
+    'Sous surveillance': '#fbbf24', 'Risque eleve': '#fb923c', 'Refus': '#f87171'
+};
+const profilLabels = Object.keys(profilData);
+const profilCounts = Object.values(profilData);
+const profilColorsArr = profilLabels.map(l => profilColors[l] || '#999');
+
+new Chart(document.getElementById('profilChart'), {
+    type: 'doughnut',
+    data: {
+        labels: profilLabels,
+        datasets: [{
+            data: profilCounts,
+            backgroundColor: profilColorsArr.map(c => c + '33'),
+            borderColor: profilColorsArr,
+            borderWidth: 2,
+        }]
+    },
+    options: {
+        responsive: true,
+        cutout: '65%',
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { padding: 12, font: { size: 11 }, boxWidth: 12 }
+            }
+        }
+    }
+});
+
+// Flux chart
+new Chart(document.getElementById('fluxChart'), {
+    type: 'bar',
+    data: {
+        labels: moisLabels,
+        datasets: [{
+            label: 'Flux moyen (FCFA)',
+            data: fluxData,
+            backgroundColor: 'rgba(224,181,79,0.2)',
+            borderColor: GOLD,
+            borderWidth: 1.5,
+            borderRadius: 6,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { color: 'rgba(224,181,79,0.06)' }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: 'rgba(224,181,79,0.06)' }, beginAtZero: true, ticks: {
+                font: { size: 11 },
+                callback: v => (v/1000000).toFixed(1) + 'M'
+            }}
+        }
+    }
+});
+</script>
+{% endblock %}

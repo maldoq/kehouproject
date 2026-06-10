@@ -1,0 +1,136 @@
+{% extends 'clients/base.html' %}
+{% block title %}Rappels & Alertes — KEHOU Property{% endblock %}
+{% block page_title %}Rappels & Alertes{% endblock %}
+
+{% block content %}
+<!-- Header info -->
+<div class="glass-card fade-up" style="margin-bottom:24px;border-color:rgba(251,191,36,0.3);">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="font-size:40px;">⏰</div>
+        <div style="flex:1;">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--cream);">
+                {{ clients_retard|length }} client(s) en retard ce mois
+            </div>
+            <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">
+                Mois de référence : {{ mois_courant|date:"F Y" }} · Mensualité : {{ MENSUALITE|floatformat:0 }} FCFA
+            </div>
+        </div>
+        {% if clients_retard %}
+        <form method="post" action="{% url 'envoyer_rappel_groupe' %}" id="groupeForm">
+            {% csrf_token %}
+            <div id="groupeInputs"></div>
+            <button type="submit" class="btn btn-whatsapp">
+                📱 Envoyer rappel groupé
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+{% if clients_retard %}
+<div class="glass-card fade-up fade-up-1">
+    <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="section-title" style="margin-bottom:0;">Clients en retard</div>
+        <label style="font-size:13px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="selectAll" onchange="toggleAll(this)"> Tout sélectionner
+        </label>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:40px;"></th>
+                    <th>Client</th>
+                    <th>Activité</th>
+                    <th>Profil KIS</th>
+                    <th>Versé ce mois</th>
+                    <th>Manque</th>
+                    <th>Téléphone</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in clients_retard %}
+                <tr>
+                    <td>
+                        <input type="checkbox" class="client-checkbox" value="{{ item.client.pk }}"
+                               onchange="updateGroupe()" style="accent-color:var(--gold);">
+                    </td>
+                    <td>
+                        <a href="{% url 'client_detail' item.client.pk %}" style="color:var(--cream);text-decoration:none;font-weight:600;">
+                            {{ item.client.prenom }} {{ item.client.nom }}
+                        </a>
+                    </td>
+                    <td>{{ item.client.activite }}</td>
+                    <td>
+                        {% if item.client.kisscore %}
+                        {% with profil=item.client.kisscore.profil %}
+                        <span class="profil-badge profil-{{ profil|cut:' ' }}">{{ profil }}</span>
+                        {% endwith %}
+                        {% else %}
+                        <span style="color:var(--text-muted);font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.montant_verse > 0 %}
+                        <span style="color:#fbbf24;font-family:'Cormorant Garamond',serif;font-size:16px;">
+                            {{ item.montant_verse|floatformat:0 }} FCFA
+                        </span>
+                        {% else %}
+                        <span style="color:#f87171;font-size:13px;">Aucun versement</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="color:#f87171;font-family:'Cormorant Garamond',serif;font-size:16px;">
+                            {{ item.manque|floatformat:0 }} FCFA
+                        </span>
+                    </td>
+                    <td style="color:var(--text-muted);font-size:13px;">
+                        {{ item.client.telephone|default:"—" }}
+                    </td>
+                    <td>
+                        {% if item.client.telephone %}
+                        <form method="post" action="{% url 'envoyer_rappel' item.client.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-whatsapp btn-sm">📱 Rappel</button>
+                        </form>
+                        {% else %}
+                        <span style="color:var(--text-muted);font-size:11px;">Pas de tél.</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="glass-card fade-up" style="text-align:center;padding:60px;">
+    <div style="font-size:64px;margin-bottom:16px;">✅</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px;color:var(--cream);">Aucun retard ce mois !</div>
+    <div style="color:var(--text-muted);font-size:14px;">Tous les clients sont à jour pour {{ mois_courant|date:"F Y" }}.</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAll(checkbox) {
+    document.querySelectorAll('.client-checkbox').forEach(c => c.checked = checkbox.checked);
+    updateGroupe();
+}
+
+function updateGroupe() {
+    const form = document.getElementById('groupeForm');
+    document.getElementById('groupeInputs').innerHTML = '';
+    document.querySelectorAll('.client-checkbox:checked').forEach(c => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'client_ids';
+        inp.value = c.value;
+        document.getElementById('groupeInputs').appendChild(inp);
+    });
+}
+</script>
+{% endblock %}

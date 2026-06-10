@@ -1,0 +1,278 @@
+{% extends 'clients/base.html' %}
+{% block title %}{{ client }} — KEHOU Property{% endblock %}
+{% block page_title %}Fiche client{% endblock %}
+
+{% block content %}
+<!-- Header card -->
+<div class="glass-card fade-up" style="margin-bottom:24px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div>
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">Client #{{ client.id }}</div>
+            <h2 style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:var(--cream);margin-bottom:4px;">{{ client.prenom }} {{ client.nom }}</h2>
+            <div style="color:var(--text-muted);font-size:14px;">{{ client.activite }} · {{ client.anciennete_annees }} ans d'ancienneté</div>
+            {% if client.telephone %}
+            <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">📱 {{ client.telephone }}</div>
+            {% endif %}
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+            {% if client.telephone %}
+            <form method="post" action="{% url 'envoyer_rappel' client.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-whatsapp">📱 Rappel WhatsApp</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'client_list' %}" class="btn btn-outline">← Retour à la liste</a>
+        </div>
+    </div>
+</div>
+
+<!-- KIS Score -->
+{% if kis_score %}
+<div class="glass-card fade-up fade-up-1" style="margin-bottom:24px;border-color:rgba(224,181,79,0.3);">
+    <div class="section-title">Score KIS</div>
+    <div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
+        <div style="text-align:center;">
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Score Global</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:64px;font-weight:700;color:var(--gold);line-height:1;">{{ kis_score.kis }}</div>
+            <div style="margin-top:8px;">
+                {% with profil=kis_score.profil %}
+                <span class="profil-badge profil-{{ profil|cut:' ' }}" style="font-size:13px;padding:6px 16px;">
+                    {% if profil == 'Premium' %}⭐
+                    {% elif profil == 'Tres fiable' %}✅
+                    {% elif profil == 'Financable' %}💰
+                    {% elif profil == 'Sous surveillance' %}⚠️
+                    {% elif profil == 'Risque eleve' %}🔴
+                    {% else %}❌{% endif %}
+                    {{ profil }}
+                </span>
+                {% endwith %}
+            </div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+            <div class="score-bar-wrap">
+                <div class="score-bar-label"><span>Discipline financière (40%)</span><span>{{ kis_score.discipline }}%</span></div>
+                <div class="score-bar"><div class="score-bar-fill" style="width:{{ kis_score.discipline }}%"></div></div>
+            </div>
+            <div class="score-bar-wrap" style="margin-top:14px;">
+                <div class="score-bar-label"><span>Score flux (35%)</span><span>{{ kis_score.flux_score }}%</span></div>
+                <div class="score-bar"><div class="score-bar-fill" style="width:{{ kis_score.flux_score }}%"></div></div>
+            </div>
+            <div class="score-bar-wrap" style="margin-top:14px;">
+                <div class="score-bar-label"><span>Résilience (25%)</span><span>{{ kis_score.resilience }}%</span></div>
+                <div class="score-bar"><div class="score-bar-fill" style="width:{{ kis_score.resilience }}%"></div></div>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--text-muted);">Calculé le {{ kis_score.date_calcul|date:"d/m/Y à H:i" }}</div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="glass-card fade-up fade-up-1" style="margin-bottom:24px;text-align:center;padding:32px;">
+    <div style="color:var(--text-muted);">⚠️ Score KIS non calculé. Ajoutez des flux et versements pour générer le score.</div>
+</div>
+{% endif %}
+
+<!-- Graphiques -->
+<div class="grid-2 fade-up fade-up-2" style="margin-bottom:24px;">
+    <div class="glass-card">
+        <div class="section-title">Flux entrants mensuels (FCFA)</div>
+        <canvas id="fluxChart" height="220"></canvas>
+        {% if not flux_qs %}
+        <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">Aucun flux enregistré</div>
+        {% endif %}
+    </div>
+    <div class="glass-card">
+        <div class="section-title">Versements mensuels (FCFA)</div>
+        <canvas id="versementsChart" height="220"></canvas>
+        {% if not versements_qs %}
+        <div style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">Aucun versement enregistré</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Informations générales + Historique -->
+<div class="grid-2 fade-up fade-up-3" style="margin-bottom:24px;">
+    <div class="glass-card">
+        <div class="section-title">Informations générales</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--glass-border);">
+                <span style="color:var(--text-muted);font-size:13px;">Activité</span>
+                <span style="font-weight:500;">{{ client.activite }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--glass-border);">
+                <span style="color:var(--text-muted);font-size:13px;">Ancienneté</span>
+                <span style="font-weight:500;">{{ client.anciennete_annees }} ans</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--glass-border);">
+                <span style="color:var(--text-muted);font-size:13px;">Catégories produits</span>
+                <span style="font-weight:500;">{{ client.nb_categories }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--glass-border);">
+                <span style="color:var(--text-muted);font-size:13px;">Réapprovisionnements/an</span>
+                <span style="font-weight:500;">{{ client.freq_stock_par_an }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;">
+                <span style="color:var(--text-muted);font-size:13px;">Date d'inscription</span>
+                <span style="font-weight:500;">{{ client.date_inscription|date:"d/m/Y" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <div class="section-title">Historique des versements</div>
+        {% if versements_qs %}
+        <div style="max-height:300px;overflow-y:auto;">
+            <table style="width:100%;">
+                <thead>
+                    <tr>
+                        <th style="padding:8px 12px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Mois</th>
+                        <th style="padding:8px 12px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Montant</th>
+                        <th style="padding:8px 12px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in versements_qs %}
+                    <tr style="border-top:1px solid rgba(224,181,79,0.08);">
+                        <td style="padding:9px 12px;font-size:13px;">{{ v.mois|date:"M Y" }}</td>
+                        <td style="padding:9px 12px;font-size:13px;font-family:'Cormorant Garamond',serif;">{{ v.montant|floatformat:0 }} FCFA</td>
+                        <td style="padding:9px 12px;">
+                            {% if v.montant >= MENSUALITE %}
+                            <span style="color:#4ade80;font-size:12px;">✅ Complet</span>
+                            {% else %}
+                            <span style="color:#fbbf24;font-size:12px;">⚠️ Partiel</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:24px;">Aucun versement enregistré</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- FORMULAIRES D'AJOUT (flux et versement) -->
+<div class="grid-2 fade-up fade-up-4" style="margin-top:24px;">
+    <div class="glass-card">
+        <div class="section-title">➕ Ajouter un flux entrant</div>
+        <form method="post" action="{% url 'ajouter_flux' client.pk %}">
+            {% csrf_token %}
+            <div class="grid-2" style="gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Mois (AAAA-MM)</label>
+                    <input type="month" name="mois" class="form-control" required value="{{ today|date:'Y-m' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Montant (FCFA)</label>
+                    <input type="number" name="montant" class="form-control" required min="0" step="1" placeholder="Ex: 2500000">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top:12px;width:100%;">📊 Enregistrer le flux</button>
+        </form>
+    </div>
+    <div class="glass-card">
+        <div class="section-title">💰 Ajouter un versement</div>
+        <form method="post" action="{% url 'ajouter_versement' client.pk %}">
+            {% csrf_token %}
+            <div class="grid-2" style="gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Mois (AAAA-MM)</label>
+                    <input type="month" name="mois" class="form-control" required value="{{ today|date:'Y-m' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Montant (FCFA)</label>
+                    <input type="number" name="montant" class="form-control" required min="0" step="1" placeholder="Ex: 563332">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top:12px;width:100%;">💾 Enregistrer le versement</button>
+        </form>
+    </div>
+</div>
+
+<!-- Petit message d'info -->
+<div class="fade-up fade-up-5" style="margin-top:24px;text-align:center;font-size:12px;color:var(--text-muted);">
+    💡 Les flux et versements sont sauvegardés mois par mois. Le score KIS est recalculé automatiquement après chaque ajout ou modification.
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Données passées par la vue
+const fluxLabels = {{ flux_labels|safe }};
+const fluxData = {{ flux_data|safe }};
+const versLabels = {{ versements_labels|safe }};
+const versData = {{ versements_data|safe }};
+const MENSUALITE = {{ MENSUALITE }};
+const GOLD = '#E0B54F';
+
+// Graphique Flux
+if (document.getElementById('fluxChart') && fluxLabels.length > 0) {
+    new Chart(document.getElementById('fluxChart'), {
+        type: 'line',
+        data: {
+            labels: fluxLabels,
+            datasets: [{
+                label: 'Flux entrant',
+                data: fluxData,
+                borderColor: GOLD,
+                backgroundColor: 'rgba(224,181,79,0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: GOLD,
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: 'rgba(224,181,79,0.06)' }, ticks: { font: { size: 10 } } },
+                y: { grid: { color: 'rgba(224,181,79,0.06)' }, beginAtZero: true, ticks: {
+                    font: { size: 10 },
+                    callback: v => (v/1000000).toFixed(1) + 'M'
+                }}
+            }
+        }
+    });
+}
+
+// Graphique Versements
+if (document.getElementById('versementsChart') && versLabels.length > 0) {
+    new Chart(document.getElementById('versementsChart'), {
+        type: 'bar',
+        data: {
+            labels: versLabels,
+            datasets: [{
+                label: 'Versement',
+                data: versData,
+                backgroundColor: versData.map(v => v >= MENSUALITE ? 'rgba(74,222,128,0.3)' : 'rgba(251,191,36,0.3)'),
+                borderColor: versData.map(v => v >= MENSUALITE ? '#4ade80' : '#fbbf24'),
+                borderWidth: 1.5,
+                borderRadius: 5,
+            }, {
+                label: 'Mensualité cible',
+                data: versLabels.map(() => MENSUALITE),
+                type: 'line',
+                borderColor: 'rgba(248,113,113,0.6)',
+                borderWidth: 1.5,
+                borderDash: [5,5],
+                pointRadius: 0,
+                fill: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { font: { size: 11 }, boxWidth: 12 } } },
+            scales: {
+                x: { grid: { color: 'rgba(224,181,79,0.06)' }, ticks: { font: { size: 10 } } },
+                y: { grid: { color: 'rgba(224,181,79,0.06)' }, beginAtZero: true, ticks: {
+                    font: { size: 10 },
+                    callback: v => (v/1000).toFixed(0) + 'k'
+                }}
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends 'clients/base.html' %}
+{% block title %}Nouveau client — KEHOU Property{% endblock %}
+{% block page_title %}Nouveau client{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto;">
+    <div class="glass-card fade-up">
+        <div class="section-title">Informations générales</div>
+        <form method="post" id="clientForm">
+            {% csrf_token %}
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Nom *</label>
+                    <input type="text" name="nom" class="form-control" required placeholder="Koné">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prénom *</label>
+                    <input type="text" name="prenom" class="form-control" required placeholder="Amadou">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Activité commerciale *</label>
+                <input type="text" name="activite" class="form-control" required placeholder="Commerce de textiles, vente de matériaux...">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Téléphone (WhatsApp)</label>
+                <input type="text" name="telephone" class="form-control" placeholder="+225 07 00 00 00 00">
+            </div>
+            <div class="grid-3">
+                <div class="form-group">
+                    <label class="form-label">Ancienneté (années) *</label>
+                    <input type="number" name="anciennete_annees" class="form-control" required min="0" max="50" placeholder="5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nb. catégories de produits *</label>
+                    <input type="number" name="nb_categories" class="form-control" required min="1" max="20" placeholder="3">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Réapprovisionnements/an *</label>
+                    <select name="freq_stock_par_an" class="form-control">
+                        <option value="4">Trimestriel (~4/an)</option>
+                        <option value="12" selected>Mensuel (~12/an)</option>
+                        <option value="26">Bimensuel (~26/an)</option>
+                        <option value="52">Hebdomadaire (~52/an)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:16px;margin-top:24px;">
+                <a href="{% url 'client_list' %}" class="btn btn-outline">Annuler</a>
+                <button type="submit" class="btn btn-primary">Créer le client →</button>
+            </div>
+        </form>
+    </div>
+    <div class="glass-card fade-up fade-up-1" style="margin-top:24px;text-align:center;">
+        <div style="font-size:12px;color:var(--text-muted);">
+            💡 Après création, vous pourrez ajouter les flux mensuels et les versements mois par mois sur la fiche client.
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends 'clients/base.html' %}
+{% block title %}Clients — KEHOU Property{% endblock %}
+{% block page_title %}Liste des clients{% endblock %}
+
+{% block content %}
+<!-- Search & Filter Bar -->
+<div class="glass-card fade-up" style="margin-bottom:20px;">
+    <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Rechercher par nom, prénom, activité...">
+        </div>
+        <div style="min-width:180px;">
+            <select name="profil" class="form-control">
+                <option value="">Tous les profils</option>
+                {% for p in profils_disponibles %}
+                <option value="{{ p }}" {% if profil_filter == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Filtrer</button>
+        <a href="{% url 'client_list' %}" class="btn btn-outline">Réinitialiser</a>
+        <a href="{% url 'import_clients' %}" class="btn btn-outline" style="margin-left:auto;">📤 Importer</a>
+        <a href="{% url 'client_create' %}" class="btn btn-primary">+ Nouveau</a>
+    </form>
+</div>
+
+<!-- Client Table -->
+<div class="glass-card fade-up fade-up-1">
+    <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+        <div class="section-title" style="margin-bottom:0;">
+            Clients enregistrés
+        </div>
+        <span style="font-size:12px;color:var(--text-muted);">{{ clients|length }} client(s)</span>
+    </div>
+
+    {% if clients %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Client</th>
+                    <th>Activité</th>
+                    <th>Ancienneté</th>
+                    <th>Score KIS</th>
+                    <th>Profil</th>
+                    <th>Discipline</th>
+                    <th>Flux</th>
+                    <th>Résilience</th>
+                    <th>Inscrit le</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td style="color:var(--text-muted);font-size:12px;">{{ client.pk }}</td>
+                    <td>
+                        <div style="font-weight:600;">{{ client.prenom }} {{ client.nom }}</div>
+                        {% if client.telephone %}
+                        <div style="font-size:11px;color:var(--text-muted);">{{ client.telephone }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ client.activite }}</td>
+                    <td>{{ client.anciennete_annees }} ans</td>
+                    <td>
+                        {% if client.kisscore %}
+                        <span style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:var(--gold);">{{ client.kisscore.kis }}</span>
+                        {% else %}
+                        <span style="color:var(--text-muted);font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.kisscore %}
+                        {% with profil=client.kisscore.profil %}
+                        <span class="profil-badge profil-{{ profil|cut:' ' }}">
+                            {% if profil == 'Premium' %}⭐
+                            {% elif profil == 'Tres fiable' %}✅
+                            {% elif profil == 'Financable' %}💰
+                            {% elif profil == 'Sous surveillance' %}⚠️
+                            {% elif profil == 'Risque eleve' %}🔴
+                            {% else %}❌{% endif %}
+                            {{ profil }}
+                        </span>
+                        {% endwith %}
+                        {% else %}
+                        <span style="color:var(--text-muted);font-size:12px;">Non calculé</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.kisscore %}
+                        <div style="min-width:80px;">
+                            <div style="font-size:12px;color:var(--text-muted);">{{ client.kisscore.discipline }}%</div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:{{ client.kisscore.discipline }}%"></div></div>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.kisscore %}
+                        <div style="min-width:80px;">
+                            <div style="font-size:12px;color:var(--text-muted);">{{ client.kisscore.flux_score }}%</div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:{{ client.kisscore.flux_score }}%"></div></div>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if client.kisscore %}
+                        <div style="min-width:80px;">
+                            <div style="font-size:12px;color:var(--text-muted);">{{ client.kisscore.resilience }}%</div>
+                            <div class="score-bar"><div class="score-bar-fill" style="width:{{ client.kisscore.resilience }}%"></div></div>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="color:var(--text-muted);font-size:12px;">{{ client.date_inscription|date:"d/m/Y" }}</td>
+                    <td>
+                        <a href="{% url 'client_detail' client.pk %}" class="btn btn-outline btn-sm">Voir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:60px;color:var(--text-muted);">
+        <div style="font-size:48px;margin-bottom:16px;">👥</div>
+        <div style="font-size:16px;margin-bottom:8px;">Aucun client trouvé</div>
+        <div style="font-size:13px;margin-bottom:24px;">Importez un fichier CSV/Excel ou créez un nouveau client.</div>
+        <div style="display:flex;gap:12px;justify-content:center;">
+            <a href="{% url 'import_clients' %}" class="btn btn-primary">📤 Importer</a>
+            <a href="{% url 'client_create' %}" class="btn btn-outline">+ Nouveau client</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

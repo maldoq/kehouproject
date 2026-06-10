@@ -1,0 +1,123 @@
+{% extends 'clients/base.html' %}
+{% block title %}Enregistrer une mensualité — KEHOU Property{% endblock %}
+{% block page_title %}Enregistrement des mensualités{% endblock %}
+
+{% block content %}
+<div style="max-width:600px;margin:0 auto;">
+    <div class="glass-card fade-up">
+        <div class="section-title">Nouveau versement</div>
+        <div style="margin-bottom:20px;padding:12px 16px;background:rgba(224,181,79,0.06);border-radius:10px;border:1px solid rgba(224,181,79,0.15);font-size:13px;color:var(--text-muted);">
+            💡 Après enregistrement, le score KIS du client sera automatiquement recalculé.
+            <br>Mensualité cible : <strong style="color:var(--gold);">563 332 FCFA</strong>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label class="form-label">Client *</label>
+                <select name="client_id" class="form-control" required onchange="updateClientInfo(this)">
+                    <option value="">— Sélectionner un client —</option>
+                    {% for client in clients %}
+                    <option value="{{ client.pk }}" data-profil="{% if client.kisscore %}{{ client.kisscore.profil }}{% endif %}">
+                        {{ client.prenom }} {{ client.nom }} — {{ client.activite }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="clientInfo" style="display:none;margin-bottom:20px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:10px;">
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Profil KIS actuel</div>
+                <span id="clientProfil" class="profil-badge">—</span>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Mois *</label>
+                    <input type="month" name="mois" class="form-control" required
+                           value="{{ today|date:'Y-m' }}"
+                           max="{{ today|date:'Y-m' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Montant versé (FCFA) *</label>
+                    <input type="number" name="montant" class="form-control" required
+                           min="0" step="1" placeholder="563332">
+                </div>
+            </div>
+
+            <!-- Visual ratio -->
+            <div class="form-group">
+                <div style="background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:10px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+                        <span>Ratio de couverture</span>
+                        <span id="ratioText">—</span>
+                    </div>
+                    <div class="score-bar">
+                        <div class="score-bar-fill" id="ratioBar" style="width:0%;transition:width 0.4s ease;"></div>
+                    </div>
+                    <div id="ratioMessage" style="font-size:12px;margin-top:8px;color:var(--text-muted);"></div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+                <a href="{% url 'client_list' %}" class="btn btn-outline">Annuler</a>
+                <button type="submit" class="btn btn-primary">💾 Enregistrer le versement</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Derniers versements -->
+    <div class="glass-card fade-up fade-up-1" style="margin-top:24px;">
+        <div class="section-title">Accès rapide</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a href="{% url 'rappels' %}" class="btn btn-outline btn-sm">⏰ Voir les retards</a>
+            <a href="{% url 'client_list' %}" class="btn btn-outline btn-sm">👥 Liste des clients</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MENSUALITE = 563332;
+
+document.querySelector('input[name="montant"]').addEventListener('input', updateRatio);
+
+function updateRatio() {
+    const montant = parseFloat(document.querySelector('input[name="montant"]').value) || 0;
+    const ratio = montant / MENSUALITE;
+    const pct = Math.min(ratio * 100, 100);
+
+    document.getElementById('ratioBar').style.width = pct + '%';
+    document.getElementById('ratioText').textContent = (ratio * 100).toFixed(1) + '%';
+
+    let msg = '', color = '';
+    if (ratio >= 1) { msg = '✅ Versement complet'; color = '#4ade80'; }
+    else if (ratio >= 0.9) { msg = '⚠️ Légèrement insuffisant (< 10% du manque)'; color = '#fbbf24'; }
+    else if (ratio >= 0.7) { msg = '⚠️ Versement partiel'; color = '#fb923c'; }
+    else if (ratio > 0) { msg = '❌ Versement insuffisant'; color = '#f87171'; }
+    else { msg = '—'; color = 'var(--text-muted)'; }
+
+    document.getElementById('ratioMessage').textContent = msg;
+    document.getElementById('ratioMessage').style.color = color;
+    document.getElementById('ratioBar').style.background = ratio >= 1
+        ? 'linear-gradient(90deg, #4ade80, #86efac)'
+        : ratio >= 0.9 ? 'linear-gradient(90deg, #fbbf24, #fde68a)'
+        : 'linear-gradient(90deg, #f87171, #fca5a5)';
+}
+
+function updateClientInfo(select) {
+    const option = select.options[select.selectedIndex];
+    const profil = option.dataset.profil;
+    const info = document.getElementById('clientInfo');
+    if (profil) {
+        info.style.display = 'block';
+        const badge = document.getElementById('clientProfil');
+        badge.textContent = profil;
+        badge.className = 'profil-badge profil-' + profil.replace(/ /g, '-');
+    } else {
+        info.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}
